@@ -3,6 +3,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:math';
+import 'dart:ui';
 
 class MLService {
   final FaceDetector _faceDetector = FaceDetector(
@@ -25,10 +26,13 @@ class MLService {
   bool isMoving = false;
 
   // For velocity calculation
-  Map<PoseLandmarkType, Point<double>> _prevLandmarks = {};
+  final Map<PoseLandmarkType, Point<double>> _prevLandmarks = {};
   DateTime? _lastTimestamp;
 
   Future<void> processImage(CameraImage image) async {
+    // ML Kit only works on Android/iOS
+    if (kIsWeb) return;
+
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
 
@@ -96,29 +100,22 @@ class MLService {
         Size(image.width.toDouble(), image.height.toDouble());
 
     // 3. Define rotation and format (Assuming portrait + NV21/YUV for Android)
-    final InputImageRotation imageRotation = InputImageRotation.rotation90deg;
+    const InputImageRotation imageRotation = InputImageRotation.rotation90deg;
 
     final InputImageFormat inputImageFormat =
         InputImageFormatValue.fromRawValue(image.format.raw) ??
             InputImageFormat.nv21;
 
     // 4. Create proper metadata for new ML Kit version
-    // ML Kit now requires bytesPerRow for each plane in the metadata
-    final planeData = image.planes.map(
-      (Plane plane) {
-        return InputImagePlaneMetadata(
-          bytesPerRow: plane.bytesPerRow,
-          height: plane.height,
-          width: plane.width,
-        );
-      },
-    ).toList();
+    // ML Kit 0.8.x+ requires a single bytesPerRow (int) usually from the first plane for NV21
+    final int bytesPerRow =
+        image.planes.isNotEmpty ? image.planes.first.bytesPerRow : 0;
 
     final inputImageMetadata = InputImageMetadata(
       size: imageSize,
       rotation: imageRotation,
       format: inputImageFormat,
-      bytesPerRow: planeData.isNotEmpty ? planeData.first.bytesPerRow : 0,
+      bytesPerRow: bytesPerRow,
     );
 
     return InputImage.fromBytes(

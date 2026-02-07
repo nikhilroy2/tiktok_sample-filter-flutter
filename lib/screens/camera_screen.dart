@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../services/ml_service.dart';
@@ -39,7 +38,7 @@ class _CameraScreenState extends State<CameraScreen> {
     );
 
     await _controller!.initialize();
-    
+
     // Start ML processing
     _controller!.startImageStream((image) {
       if (_isProcessing) return;
@@ -54,14 +53,14 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_isRecording) {
       final file = await _controller!.stopVideoRecording();
       setState(() => _isRecording = false);
-      _showUploadDialog(File(file.path));
+      _showUploadDialog(file); // Pass XFile directly
     } else {
       await _controller!.startVideoRecording();
       setState(() => _isRecording = true);
     }
   }
 
-  void _showUploadDialog(File videoFile) {
+  void _showUploadDialog(XFile videoFile) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -75,10 +74,19 @@ class _CameraScreenState extends State<CameraScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              // Show loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text("Uploading..."),
+                    duration: Duration(seconds: 1)),
+              );
+
               final success = await ApiService().uploadVideo(videoFile);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(success ? "Upload successful!" : "Upload failed")),
+                  SnackBar(
+                      content: Text(
+                          success ? "Upload successful!" : "Upload failed")),
                 );
               }
             },
@@ -90,7 +98,6 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _processImage(CameraImage image) async {
-
     try {
       await _mlService.processImage(image);
     } finally {
@@ -127,7 +134,7 @@ class _CameraScreenState extends State<CameraScreen> {
               child: CameraPreview(_controller!),
             ),
           ),
-          
+
           // AR Overlay
           RepaintBoundary(
             child: CustomPaint(
@@ -168,11 +175,12 @@ class _CameraScreenState extends State<CameraScreen> {
                     ),
                   ),
                 ),
-                const Icon(Icons.flip_camera_ios, color: Colors.white, size: 30),
+                const Icon(Icons.flip_camera_ios,
+                    color: Colors.white, size: 30),
               ],
             ),
           ),
-          
+
           if (_isRecording)
             Positioned(
               top: 40,
@@ -180,14 +188,16 @@ class _CameraScreenState extends State<CameraScreen> {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
                     "REC 00:01",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

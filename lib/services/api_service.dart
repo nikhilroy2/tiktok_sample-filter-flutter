@@ -1,18 +1,25 @@
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:camera/camera.dart'; // for XFile
 
 class ApiService {
   static const String baseUrl = 'http://192.168.0.100:8000/api';
 
-  Future<bool> uploadVideo(File videoFile) async {
+  Future<bool> uploadVideo(XFile videoFile) async {
     try {
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/upload.php'),
       );
+
+      // Compatible with both Web and Mobile
+      final bytes = await videoFile.readAsBytes();
       request.files.add(
-        await http.MultipartFile.fromPath('video', videoFile.path),
+        http.MultipartFile.fromBytes(
+          'video',
+          bytes,
+          filename: videoFile.name,
+        ),
       );
 
       var response = await request.send();
